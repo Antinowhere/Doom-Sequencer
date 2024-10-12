@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title> Sequencer of Doom </title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /* Global Styles */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        :root {
+            --bg-color: #f0f0f0;
+            --text-color: #333;
+            --cell-color: #ddd;
+            --cell-active-color: #4CAF50;
+            --cell-current-column: #ffeb3b;
+        }
+
+        .dark-mode {
+            --bg-color: #1e1e1e;
+            --text-color: #f0f0f0;
+            --cell-color: #333;
+            --cell-active-color: #ff5722;
+            --cell-current-column: #ffc107;
+        }
+
+        /* Container */
+        .game-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* Title */
+        h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px 0;
+        }
+
+        .controls>* {
+            margin: 5px;
+        }
+
+        /* Grid Container */
+        .grid-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            position: relative;
+        }
+
+        /* Left and Right Graphics */
+        .left-graphic,
+        .right-graphic {
+            width: 50px;
+            height: auto;
+            text-align: center;
+            font-size: 2em;
+            line-height: 1;
+        }
+
+        /* Grid Wrapper */
+        .grid-wrapper {
+            position: relative;
+        }
+
+        /* Beat Numbers */
+        .beat-numbers {
+            display: grid;
+            grid-template-columns: repeat(16, 50px);
+            gap: 5px;
+            margin-bottom: 5px;
+        }
+
+        .beat-number {
+            text-align: center;
+            font-weight: bold;
+            font-size: 0.8em;
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(16, 50px);
+            grid-template-rows: repeat(8, 50px);
+            gap: 5px;
+            position: relative;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            background-color: var(--cell-color);
+            border-radius: 4px;
+            cursor: pointer;
+            position: relative;
+            transition: background-color 0.1s;
+        }
+
+        .cell.active {
+            background-color: var(--cell-active-color);
+        }
+
+        .cell.current-column {
+            background-color: var(--cell-current-column);
+        }
+
+        .cell::after {
+            content: attr(data-label);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.7em;
+            color: var(--text-color);
+            pointer-events: none;
+        }
+
+        /* Playhead Line */
+        .playhead-line {
+            position: absolute;
+            top: -20px;
+            width: 50px;
+            height: 15px;
+            background-color: transparent;
+            border-bottom: 5px solid red;
+            transition: left 0.1s;
+        }
+
+        /* Toggle Switch */
+        .toggle-switch {
+            display: flex;
+            align-items: center;
+        }
+
+        .toggle-switch input {
+            margin-right: 5px;
+        }
+
+        /* Chaos Button Styling */
+        .chaos-button {
+            padding: 10px 15px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #e91e63;
+            color: #fff;
+            transition: background-color 0.3s;
+            transform: skewX(-10deg) rotate(-2deg);
+            font-family: 'Courier New', monospace;
+            text-shadow: 1px 1px #000;
+        }
+
+        .chaos-button:hover {
+            background-color: #d81b60;
+        }
+
+        /* Buttons */
+        button {
+            padding: 10px 15px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            background-color: #4CAF50;
+            color: #fff;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        select,
+        input[type="range"] {
+            padding: 5px;
+            font-size: 1em;
+        }
+
+        /* Volume Sliders */
+        .volume-controls {
+            display: flex;
+            flex-direction: column;
+            margin-left: 10px;
+        }
+
+        .volume-controls label {
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+
+        .volume-slider {
+            margin-bottom: 10px;
+        }
+
+        /* Envelope Controls */
+        .envelope-controls {
+            display: flex;
+            flex-direction: column;
+            margin-left: 10px;
+        }
+
+        .envelope-controls label {
+            font-size: 0.8em;
+            margin-bottom: 5px;
+        }
+
+        .envelope-slider {
+            margin-bottom: 10px;
+        }
+
+        /* Screen Shake Animation */
+        @keyframes shake {
+            0% {
+                transform: translate(0px, 0px);
+            }
+
+            10% {
+                transform: translate(-2px, -2px);
+            }
+
+            20% {
+                transform: translate(2px, -2px);
+            }
+
+            30% {
+                transform: translate(-2px, 2px);
+            }
+
+            40% {
+                transform: translate(2px, 2px);
+            }
+
+            50% {
+                transform: translate(-2px, -2px);
+            }
+
+            60% {
+                transform: translate(2px, -2px);
+            }
+
+            70% {
+                transform: translate(-2px, 2px);
+            }
+
+            80% {
+                transform: translate(2px, 2px);
+            }
+
+            90% {
+                transform: translate(-2px, -2px);
+            }
+
+            100% {
+                transform: translate(0px, 0px);
+            }
+        }
+
+        .shake {
+            animation: shake 0.5s infinite;
+        }
+
+        /* Color Change Animation */
+        @keyframes colorChange {
+            0% {
+                background-color: #ff0000;
+            }
+
+            25% {
+                background-color: #00ff00;
+            }
+
+            50% {
+                background-color: #0000ff;
+            }
+
+            75% {
+                background-color: #ffff00;
+            }
+
+            100% {
+                background-color: #ff0000;
+            }
+        }
+
+        .color-change {
+            animation: colorChange 4s linear infinite;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="shake-container">
+        <div class="game-container">
+            <div class="header">
+                <h1>Soundscape Symphony</h1>
+                <div class="toggle-switch">
+                    <input type="checkbox" id="themeToggle">
+                    <label for="themeToggle">Dark Mode</label>
+                </div>
+            </div>
+            <div class="controls">
+                <button id="playBtn">Play</button>
+                <button id="savePresetBtn">Save Preset</button>
+                <button id="loadPresetBtn">Load Preset</button>
+                <select id="waveType">
+                    <option value="sine">Sine</option>
+                    <option value="square">Square</option>
+                    <option value="sawtooth">Sawtooth</option>
+                    <option value="triangle">Triangle</option>
+                </select>
+                <div class="envelope-controls">
+                    <label>Envelope Controls (Synths)</label>
+                    <input type="range" id="attackControl" min="0.01" max="1" value="0.1" step="0.01"
+                        class="envelope-slider">
+                    <label for="attackControl">Attack</label>
+                    <input type="range" id="decayControl" min="0.01" max="1" value="0.2" step="0.01"
+                        class="envelope-slider">
+                    <label for="decayControl">Decay</label>
+                    <input type="range" id="sustainControl" min="0" max="1" value="0.5" step="0.01"
+                        class="envelope-slider">
+                    <label for="sustainControl">Sustain</label>
+                    <input type="range" id="releaseControl" min="0.01" max="1" value="0.5" step="0.01"
+                        class="envelope-slider">
+                    <label for="releaseControl">Release</label>
+                </div>
+                <select id="lfoSpeed">
+                    <option value="0">LFO Off</option>
+                    <option value="0.5">Slow LFO</option>
+                    <option value="2">Medium LFO</option>
+                    <option value="5">Fast LFO</option>
+                </select>
+                <input type="range" id="pitchControl" min="100" max="1000" value="440" step="10">
+                <label for="pitchControl">Pitch</label>
+                <select id="bpmControl">
+                    <option value="60">60 BPM</option>
+                    <option value="90">90 BPM</option>
+                    <option value="120" selected>120 BPM</option>
+                    <option value="150">150 BPM</option>
+                    <option value="180">180 BPM</option>
+                </select>
+                <button id="chaosBtn" class="chaos-button">Chaos</button>
+            </div>
+            <div class="grid-container">
+                <div class="left-graphic">&#9835;</div> <!-- Music note character -->
+                <div class="grid-wrapper">
+                    <div class="beat-numbers" id="beatNumbers"></div>
+                    <div class="grid" id="soundGrid"></div>
+                    <div class="playhead-line" id="playheadLine"></div>
+                </div>
+                <div class="volume-controls" id="volumeControls"></div>
+                <div class="right-graphic">&#9835;</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let isPlaying = false;
+        let currentStep = 0;
+        let intervalId;
+        let bpm = 120;
+
+        const numberOfSteps = 16;
+        const numberOfRows = 8;
+        const sounds = [
+            // Synthesizer sounds
+            { name: 'Synth 1', type: 'synth' },
+            { name: 'Synth 2', type: 'synth' },
+            { name: 'Synth 3', type: 'synth' },
+            { name: 'Synth 4', type: 'synth' },
+            // Drum sounds
+            { name: 'Kick', type: 'sample', file: 'sounds/kick.wav' },
+            { name: 'Snare', type: 'sample', file: 'sounds/snare.wav' },
+            { name: 'Hi-Hat Closed', type: 'sample', file: 'sounds/hihat_closed.wav' },
+            { name: 'Hi-Hat Open', type: 'sample', file: 'sounds/hihat_open.wav' },
+            // Additional custom sounds can be added here
+        ];
+
+        const grid = [];
+        const buffers = {};
+        const oscillators = [];
+        const gains = [];
+        const lfos = [];
+        const volumeNodes = [];
+        const synthEnvelopes = [];
+
+        const soundGrid = document.getElementById('soundGrid');
+        const playheadLine = document.getElementById('playheadLine');
+        const beatNumbers = document.getElementById('beatNumbers');
+        const volumeControls = document.getElementById('volumeControls');
+
+        // Global distortion effect
+        const distortionNode = audioContext.createWaveShaper();
+        let isChaosEnabled = false;
+
+        // Create distortion curve
+        function makeDistortionCurve(amount) {
+            const k = typeof amount === 'number' ? amount : 50;
+            const n_samples = 44100;
+            const curve = new Float32Array(n_samples);
+            const deg = Math.PI / 180;
+            for (let i = 0; i < n_samples; ++i) {
+                const x = (i * 2) / n_samples - 1;
+                curve[i] = ((3 + k) * x * 20 * deg) / (Math.PI + k * Math.abs(x));
+            }
+            return curve;
+        }
+        distortionNode.curve = makeDistortionCurve(400);
+        distortionNode.oversample = '4x';
+
+        // Create beat numbers
+        for (let i = 0; i < numberOfSteps; i++) {
+            const beatNumber = document.createElement('div');
+            beatNumber.classList.add('beat-number');
+            if (i % 4 === 0) {
+                beatNumber.textContent = (i / 4) + 1;
+            } else {
+                beatNumber.textContent = '';
+            }
+            beatNumbers.appendChild(beatNumber);
+        }
+
+        // Load sample sounds
+        sounds.forEach((sound) => {
+            if (sound.type === 'sample') {
+                fetch(sound.file)
+                    .then(response => response.arrayBuffer())
+                    .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                    .then(audioBuffer => {
+                        buffers[sound.name] = audioBuffer;
+                    })
+                    .catch(error => {
+                        console.error('Error loading sound:', sound.file, error);
+                    });
+            }
+        });
+
+        // Create grid and initialize grid data
+        for (let row = 0; row < numberOfRows; row++) {
+            grid[row] = [];
+            for (let col = 0; col < numberOfSteps; col++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.label = sounds[row].name;
+                cell.addEventListener('click', () => toggleCell(row, col));
+                soundGrid.appendChild(cell);
+                grid[row][col] = false;
+            }
+        }
+
+        // Create volume controls
+        sounds.forEach((sound, index) => {
+            const volumeControl = document.createElement('input');
+            volumeControl.type = 'range';
+            volumeControl.min = '0';
+            volumeControl.max = '1';
+            volumeControl.step = '0.01';
+            volumeControl.value = '0.8';
+            volumeControl.classList.add('volume-slider');
+            volumeControl.addEventListener('input', () => {
+                volumeNodes[index].gain.value = volumeControl.value;
+            });
+            const label = document.createElement('label');
+            label.textContent = sound.name;
+            label.style.marginTop = '10px';
+            volumeControls.appendChild(label);
+            volumeControls.appendChild(volumeControl);
+        });
+
+        function toggleCell(row, col) {
+            grid[row][col] = !grid[row][col];
+            const index = row * numberOfSteps + col;
+            soundGrid.children[index].classList.toggle('active');
+        }
+
+        function setupSynthesizers() {
+            sounds.forEach((sound, index) => {
+                const volumeNode = audioContext.createGain();
+                volumeNode.gain.value = document.getElementsByClassName('volume-slider')[index].value;
+                volumeNodes[index] = volumeNode;
+
+                if (sound.type === 'synth') {
+                    const osc = audioContext.createOscillator();
+                    const gain = audioContext.createGain();
+                    const lfo = audioContext.createOscillator();
+                    const lfoGain = audioContext.createGain();
+
+                    osc.type = waveTypeSelect.value;
+                    osc.frequency.value = pitchControl.value * Math.pow(2, index / 12);
+                    lfo.frequency.value = parseFloat(lfoSpeedSelect.value);
+                    lfoGain.gain.value = 20;
+
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(osc.frequency);
+                    osc.connect(gain);
+                    gain.connect(volumeNode);
+                    volumeNode.connect(distortionNode);
+                    distortionNode.connect(audioContext.destination);
+
+                    gain.gain.value = 0;
+
+                    osc.start();
+                    lfo.start();
+
+                    oscillators[index] = osc;
+                    gains[index] = gain;
+                    lfos[index] = lfo;
+                } else if (sound.type === 'sample') {
+                    volumeNode.connect(distortionNode);
+                    distortionNode.connect(audioContext.destination);
+                }
+            });
+        }
+
+        function playStep() {
+            const stepDuration = (60 / bpm) / numberOfSteps; // in seconds
+            sounds.forEach((sound, rowIndex) => {
+                if (grid[rowIndex][currentStep]) {
+                    if (sound.type === 'synth') {
+                        // Trigger synthesizer note with envelope
+                        const now = audioContext.currentTime;
+                        const gain = gains[rowIndex].gain;
+                        const attack = parseFloat(attackControl.value);
+                        const decay = parseFloat(decayControl.value);
+                        const sustain = parseFloat(sustainControl.value);
+                        const release = parseFloat(releaseControl.value);
+
+                        gain.cancelScheduledValues(now);
+                        gain.setValueAtTime(0, now);
+                        gain.linearRampToValueAtTime(1, now + attack);
+                        gain.linearRampToValueAtTime(sustain, now + attack + decay);
+                        gain.setValueAtTime(sustain, now + stepDuration * 0.9);
+                        gain.linearRampToValueAtTime(0, now + stepDuration * 0.9 + release);
+                    } else if (sound.type === 'sample') {
+                        // Play sample sound
+                        playSample(sound.name, rowIndex);
+                    }
+                }
+            });
+
+            // Update current column styling
+            updatePlayhead();
+
+            currentStep = (currentStep + 1) % numberOfSteps;
+        }
+
+        function updatePlayhead() {
+            // Remove 'current-column' class from all cells
+            document.querySelectorAll('.cell.current-column').forEach(cell => {
+                cell.classList.remove('current-column');
+            });
+
+            // Add 'current-column' class to the current column
+            for (let row = 0; row < numberOfRows; row++) {
+                const index = row * numberOfSteps + currentStep;
+                soundGrid.children[index].classList.add('current-column');
+            }
+
+            // Move the playhead line
+            playheadLine.style.left = (currentStep * (50 + 5)) + 'px'; // 50px cell width + 5px gap
+        }
+
+        function playSample(name, rowIndex) {
+            const source = audioContext.createBufferSource();
+            source.buffer = buffers[name];
+            source.connect(volumeNodes[rowIndex]);
+            source.start();
+        }
+
+        function togglePlay() {
+            if (isPlaying) {
+                clearInterval(intervalId);
+                // Stop all oscillators
+                oscillators.forEach((osc) => osc.stop());
+                lfos.forEach((lfo) => lfo.stop());
+                oscillators.length = 0;
+                gains.length = 0;
+                lfos.length = 0;
+                isPlaying = false;
+                playBtn.textContent = 'Play';
+                // Remove shake and color-change classes
+                shakeContainer.classList.remove('shake');
+                document.body.classList.remove('color-change');
+                // Reset current column styling
+                document.querySelectorAll('.cell.current-column').forEach(cell => {
+                    cell.classList.remove('current-column');
+                });
+                // Disable distortion
+                if (isChaosEnabled) {
+                    distortionNode.disconnect(audioContext.destination);
+                    isChaosEnabled = false;
+                }
+            } else {
+                setupSynthesizers();
+                currentStep = 0; // Reset to the first step
+                const intervalTime = (60 / bpm) * 1000 / numberOfSteps; // interval in ms
+                intervalId = setInterval(() => {
+                    playStep();
+
+                    // Screen shake and color change
+                    if (chaosBtn.classList.contains('active')) {
+                        shakeContainer.classList.add('shake');
+                        document.body.classList.add('color-change');
+                        // Enable distortion
+                        if (!isChaosEnabled) {
+                            distortionNode.connect(audioContext.destination);
+                            isChaosEnabled = true;
+                        }
+                    } else {
+                        shakeContainer.classList.remove('shake');
+                        document.body.classList.remove('color-change');
+                        // Disable distortion
+                        if (isChaosEnabled) {
+                            distortionNode.disconnect(audioContext.destination);
+                            isChaosEnabled = false;
+                        }
+                    }
+                }, intervalTime);
+                isPlaying = true;
+                playBtn.textContent = 'Pause';
+            }
+        }
+
+        function savePreset() {
+            const preset = JSON.stringify(grid);
+            localStorage.setItem('soundscapePreset', preset);
+            alert('Preset saved!');
+        }
+
+        function loadPreset() {
+            const preset = localStorage.getItem('soundscapePreset');
+            if (preset) {
+                const loadedGrid = JSON.parse(preset);
+                for (let row = 0; row < loadedGrid.length; row++) {
+                    for (let col = 0; col < loadedGrid[row].length; col++) {
+                        grid[row][col] = loadedGrid[row][col];
+                        const index = row * numberOfSteps + col;
+                        if (grid[row][col]) {
+                            soundGrid.children[index].classList.add('active');
+                        } else {
+                            soundGrid.children[index].classList.remove('active');
+                        }
+                    }
+                }
+                alert('Preset loaded!');
+            } else {
+                alert('No preset found.');
+            }
+        }
+
+        // Event Listeners
+        const playBtn = document.getElementById('playBtn');
+        playBtn.addEventListener('click', togglePlay);
+
+        const savePresetBtn = document.getElementById('savePresetBtn');
+        savePresetBtn.addEventListener('click', savePreset);
+
+        const loadPresetBtn = document.getElementById('loadPresetBtn');
+        loadPresetBtn.addEventListener('click', loadPreset);
+
+        const bpmControl = document.getElementById('bpmControl');
+        bpmControl.addEventListener('change', () => {
+            bpm = parseInt(bpmControl.value);
+            if (isPlaying) {
+                clearInterval(intervalId);
+                const intervalTime = (60 / bpm) * 1000 / numberOfSteps;
+                intervalId = setInterval(() => {
+                    playStep();
+
+                    // Screen shake and color change
+                    if (chaosBtn.classList.contains('active')) {
+                        shakeContainer.classList.add('shake');
+                        document.body.classList.add('color-change');
+                    } else {
+                        shakeContainer.classList.remove('shake');
+                        document.body.classList.remove('color-change');
+                    }
+                }, intervalTime);
+            }
+        });
+
+        const waveTypeSelect = document.getElementById('waveType');
+        waveTypeSelect.addEventListener('change', () => {
+            if (isPlaying) {
+                oscillators.forEach((osc) => {
+                    osc.type = waveTypeSelect.value;
+                });
+            }
+        });
+
+        const lfoSpeedSelect = document.getElementById('lfoSpeed');
+        lfoSpeedSelect.addEventListener('change', () => {
+            if (isPlaying) {
+                lfos.forEach((lfo) => {
+                    lfo.frequency.setTargetAtTime(parseFloat(lfoSpeedSelect.value), audioContext.currentTime, 0.01);
+                });
+            }
+        });
+
+        const pitchControl = document.getElementById('pitchControl');
+        pitchControl.addEventListener('input', () => {
+            if (isPlaying) {
+                oscillators.forEach((osc, index) => {
+                    osc.frequency.setTargetAtTime(pitchControl.value * Math.pow(2, index / 12), audioContext.currentTime, 0.01);
+                });
+            }
+        });
+
+        // Envelope Controls
+        const attackControl = document.getElementById('attackControl');
+        const decayControl = document.getElementById('decayControl');
+        const sustainControl = document.getElementById('sustainControl');
+        const releaseControl = document.getElementById('releaseControl');
+
+        // Dark Mode Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('change', () => {
+            document.body.classList.toggle('dark-mode', themeToggle.checked);
+        });
+
+        // Chaos Button
+        const chaosBtn = document.getElementById('chaosBtn');
+        chaosBtn.addEventListener('click', () => {
+            chaosBtn.classList.toggle('active');
+        });
+
+        // Get reference to the shake container
+        const shakeContainer = document.querySelector('.shake-container');
+    </script>
+</body>
+
+</html>
